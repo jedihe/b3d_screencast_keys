@@ -68,6 +68,7 @@ class ScreenWidget:
         bgl.glEnd()
         return
 
+        #Draw the bounds (debug helper)
         bgl.glColor4f(1.0, 0.0, 0.0, 0.05)
         bgl.glBegin(bgl.GL_QUADS)
         bgl.glVertex2f(bounds['min'].x*size + offset[0], bounds['min'].y*size + offset[1])
