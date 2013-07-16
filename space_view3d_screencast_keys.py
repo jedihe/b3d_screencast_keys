@@ -943,6 +943,32 @@ class KeyboardDisplay(ScreenDisplay):
             bgl.glColor4f(1.0, 1.0, 1.0, main_alpha)
             self._widgets[action.type].draw_widget(self._size, main_key_offset)
 
+class HistoryDisplay(KeyboardDisplay):
+    def __init__(self):
+        super(KeyboardDisplay, self).__init__('History', self._keys_shapes)
+        self._keyboard_detector = KeyboardActionDetector()
+        self._mouse_detector = MouseActionDetector()
+        self.set_size(30)
+        pass
+
+    def process_event(self, event):
+        key_act = self._keyboard_detector.detect_action(event)
+        if key_act:
+            self.process_action(key_act)
+        mouse_act = self._mouse_detector.detect_action(event)
+        if mouse_act:
+            self.process_action(mouse_act)
+
+    def process_action(self, action):
+        print("*"*10)
+        print("Adding action to history")
+        self.add_action(action)
+
+    def draw_display(self):
+        print("="*20)
+        print("Drawing {} display. Actions logged:".format(self._id))
+        print(str(self._actions_logger))
+
 class Action:
     ctrl = False
     alt = False
@@ -1054,6 +1080,9 @@ class Logger:
         cur_time = time.time()
         return [k for k in self._log if k.timestamp > cur_time - threshold]
 
+    def get_all_events(self):
+        return list(self._log)
+
 def draw_callback_px(self, context):
     sc = context.scene
 
@@ -1062,6 +1091,8 @@ def draw_callback_px(self, context):
         self.mouse_display.draw_display()
     if sc.screencast_keys_display_keyboard:
         self.keyboard_display.draw_display(context.region.width)
+    if sc.screencast_keys_display_history:
+        self.history_display.draw_display()
 
 class ScreencastKeysStatus(bpy.types.Operator):
     bl_idname = "view3d.screencast_keys"
@@ -1101,6 +1132,7 @@ class ScreencastKeysStatus(bpy.types.Operator):
 
         self.mouse_display.process_event(event)
         self.keyboard_display.process_event(event)
+        self.history_display.process_event(event)
 
         #print("Ctrl:", event.ctrl)
         #print("Alt:", event.alt)
@@ -1133,6 +1165,7 @@ class ScreencastKeysStatus(bpy.types.Operator):
                 context.window_manager.screencast_keys_keys = True
                 self.keyboard_display = KeyboardDisplay()
                 self.mouse_display = MouseDisplay()
+                self.history_display = HistoryDisplay()
                 ScreencastKeysStatus.handle_add(self, context)
                 context.window_manager.modal_handler_add(self)
                 return {'RUNNING_MODAL'}
@@ -1163,7 +1196,11 @@ def init_properties():
     scene.screencast_keys_display_keyboard = bpy.props.BoolProperty(
         name="Display Keyboard Events",
         description = "Displays a fixed widget for the keyboard events",
-        default = False)
+        default = True)
+    scene.screencast_keys_display_history = bpy.props.BoolProperty(
+        name="Display History",
+        description = "Displays a list of the recent events",
+        default = True)
 
     # Runstate initially always set to False
     # note: it is not stored in the Scene, but in window manager:
@@ -1208,6 +1245,8 @@ class OBJECT_PT_keys_status(bpy.types.Panel):
                 row.prop(sc, "screencast_keys_mouse_size", text="Mouse Size")
             row = layout.row(align=True)
             row.prop(sc, "screencast_keys_display_keyboard", text="Keyboard")
+            row = layout.row(align=True)
+            row.prop(sc, "screencast_keys_display_history", text="History")
 
 classes = (ScreencastKeysStatus,
            OBJECT_PT_keys_status)
